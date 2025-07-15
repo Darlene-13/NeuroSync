@@ -154,7 +154,7 @@ class Database:
     
     @contextmanager
     def get_connection(self):
-        """ Get databse connection with proper cleanup"""
+        """ Get database connection with proper cleanup"""
         conn = get_raw_connection()
         try:
             yield conn
@@ -163,3 +163,119 @@ class Database:
             raise e
         finally:
             conn.close()
+
+    def _set_schema_version(self, conn: sqlite3.Connection, version: int):
+        """ Set current schema version in the database."""
+        conn.execute("INSERT OR REPLACE INTO schema_version (version, applied_at) VALUES (?, ?)",
+                     (version, datetime.now().isoformat())
+                )
+        
+    def get_schema_version(self) -> int:
+        """ Get the current schema version from the database."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(f"SELECT version FROM {Tables.SCHEMA_VERSION} ORDER BY version DESC LIMIT 1")
+            result = cursor.fetchone()
+            return result[0] if result else 0
+        
+#USER OPERATIONS
+class UserRepository:
+    def __init__(self, db: Database):
+        self.db = db
+
+    def create_user(self, user: User) -> User:
+        """ Create a new user in the database."""
+        with self.db.get_connection() as conn:
+            data = user.to_dict()
+            placeholders = ','.join(['?' for _ in data])
+            columns = ','.join(data.keys())
+
+            conn.execute(
+                f"INSERT INTO {Tables.USERS} ({columns}) VALUES ({placeholders})",
+                list(data.values())
+
+            )
+            conn.commit()
+        return user
+    
+    def get_user(self, user_id: str) -> Optional[User]:
+        """Get user by ID"""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(
+                f"SELECT *FROM {Tables.USERS} WHERE id = ?", (user_id)
+            )
+            row = cursor.fetchone()
+            if row:
+                return User.from_dict(dict(row))
+            return None
+        
+    def get_user_by_email(self, email: str) -> Optional[User]:
+        """ Get user by email."""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(
+                f"SELECT * FROM {Tables.USERS} WHERE email = ?", (email)
+            )
+            row = cursor.fetchone()
+            if row:
+                return User.from_dict(dict(row))
+        return None
+    
+    
+    def update_user(self, user:User) -> User:
+        """ Update user information."""
+        with self.db.get_connection() as conn:
+            data =  user.to_dict()
+            set_clause = ', '.join([f"{key} = ?" for key in data.keys() if key != 'id'])
+            values = [value for key, value in data.items() if key != 'id']
+            values.append(user.id)
+
+            conn.execute(
+                f"UPDATE {Tables.USERS} SET {set_clause} WHERE id = ?",
+                values
+            )
+            conn.commit()
+        return user
+
+#TASK OPERATIONS: TASK REPOSITORY
+class TaskRepository:
+    def __init__(self, db: Database):
+        self.db = db
+
+    def create_task(self, task: Task) -> Task:
+        """ Create a new task in the database."""
+        with self.db.get_connection() as conn:
+            data = task.to_dict()
+            placeholders = ', '.join(['?' for _ in data])
+            columns = ', '.join(data.keys())
+            conn.execute(
+                f" INSERT INTO {Tables.TASKS} ({columns}) VALUES ({placeholders})",
+                list(data.values)
+            )
+            conn.commit()
+        return task
+    
+    def get_task(self, task_id: str) -> Optional[Task]:
+        """ Get a task by its ID."""
+        with self.db.get_connection() as conn:
+            cursor = conn.execute(
+                f" SELECT * FROM {Tables.TASKS} WHERE id = ", (task_id)
+            )
+            row  = cursor.fetchone()
+            if row:
+                return Task.from_dict (dict(row))
+        return None
+    
+    def update_task(self, task:Task) -> Task:
+        """ Update an existing task."""
+        with self.db.get_connection() as conn:
+            data = task.to_dict()
+            set_clause = ', '.join([
+                f"{key} = ?" for key in data.keys() if key != 'id'
+            ])
+            values = [value for key, value in data.items() if key != 'id']
+            values.append(task.id)
+            conn.execute(
+                f"UPDATE {Tables.TASKS} SET {set_clause} WHERE id = ?",
+                values
+            )
+            conn.commit()
+        return task
