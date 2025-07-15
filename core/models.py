@@ -238,7 +238,7 @@ class FinanceRecord:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     user_id: str
     amount: float
-    category: FinanceCategory
+    category: FinanceCategory = FinanceCategory.OTHER
     description: Optional[str] = None
     source: str = ""
     date: datetime = field(default_factory=datetime.now())
@@ -246,6 +246,9 @@ class FinanceRecord:
     amount: float = 0.0
     transaction_date: datetime = field(default_factory=datetime.now())
     is_income: bool = False
+    note: Optional[str] = None
+    is_recurring: bool = False
+    updated_at: datetime = field(default_factory=datetime.now())
     tags: List[str] = field(default_factory=list)
 
     def __post_init__(self):
@@ -255,6 +258,9 @@ class FinanceRecord:
             self.created_at = datetime.now()
         if self.transactiom_date is None:
             self.transaction_date = datetime.now()
+        if self.date is None:
+            self.date = datetime.now()
+
 
     def to_dict(self):
         return {
@@ -267,7 +273,11 @@ class FinanceRecord:
             "created_at": self.created_at.isoformat(),
             "transaction_date": self.transaction_date.isoformat(),
             "is_income": self.is_income,
-            "tags": json.dumps(self.tags)
+            "tags": json.dumps(self.tags),
+            "note": self.note,
+            "is_recurring": self.is_recurring,
+            "updated_at": self.updated_at.isoformat()
+
         }
     
     @classmethod
@@ -282,7 +292,11 @@ class FinanceRecord:
             created_at=datetime.fromisoformat(data["created_at"]),
             transaction_date=datetime.fromisoformat(data["transaction_date"]),
             is_income=data.get("is_income", False),
-            tags=json.loads(data.get("tags", "[]"))
+            tags=json.loads(data.get("tags", "[]")),
+            note=data.get("note"),
+            is_recurring=data.get("is_recurring", False),
+            updated_at=datetime.fromisoformat(data["updated_at"]) if data.get("updated_at")
+            else datetime.now()
         )
     
     def is_recent(self):
