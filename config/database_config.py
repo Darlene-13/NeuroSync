@@ -30,7 +30,7 @@ class DatabaseConfig:
     # Development vs production settings
     if APP_MODE == AppModes.DEVELOPMENT:
         PRAGMAS["synchronous"] = "OFF"  # Faster writes in development
-    elif APP_MODE == App.Modes.PRODUCTION:
+    elif APP_MODE == AppModes.PRODUCTION:
         PRAGMAS["synchronous"] = "FULL"  # Full safety in production
 
 
@@ -184,7 +184,7 @@ def test_connection():
         cursor.close()
         conn.close()
         return result is not None
-    except exeption as e:
+    except Exception as e:
         print(f"Database connection test failed: {e}")
         return False
     
