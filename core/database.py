@@ -154,3 +154,12 @@ class Database:
     
     @contextmanager
     def get_connection(self):
+        """ Get databse connection with proper cleanup"""
+        conn = get_raw_connection()
+        try:
+            yield conn
+        except Exception as e:
+            conn.rollback()
+            raise e
+        finally:
+            conn.close()
